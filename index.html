@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estudio Pima</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
+<style>
+/* Layout: two-pane workbench — controls left, live canvas right; stacks on phones */
+:root{
+  --bg:#f3f1ec; --surface:#fbfaf7; --ink:#26272a; --muted:#6a6c66; --line:#dcd8cf;
+  --accent:#5f6f4f; --accent-ink:#f7f4ee; --field:#ffffff; --warn:#9a4a33;
+  --display:"Playfair Display", Georgia, "Times New Roman", serif;
+  --body:"Montserrat", "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1b1c1a; --surface:#242522; --ink:#ecebe6; --muted:#a3a59c; --line:#3a3c37;
+  --accent:#9fb18a; --accent-ink:#1b1c1a; --field:#2c2d2a; --warn:#e3957c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1b1c1a; --surface:#242522; --ink:#ecebe6; --muted:#a3a59c; --line:#3a3c37;
+  --accent:#9fb18a; --accent-ink:#1b1c1a; --field:#2c2d2a; --warn:#e3957c; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.5;padding-inline:16px;padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:20px}
+header h1{font-family:var(--display);font-weight:600;font-size:clamp(24px,4vw,32px);margin:0;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted);max-width:64ch}
+.grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:16px;min-width:0}
+fieldset{border:0;margin:0;padding:0;display:grid;gap:10px;min-width:0}
+legend{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:0;margin-bottom:6px}
+label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--ink)}
+input[type=text],textarea,select{font:inherit;font-weight:500;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+textarea{resize:vertical;min-height:60px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,.seg input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg label{display:block}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:inline-block;padding:7px 12px;border:1px solid var(--line);border-radius:999px;font-weight:600;font-size:12px;cursor:pointer;background:var(--field)}
+.seg input:checked+span{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.drop{border:1.5px dashed var(--line);border-radius:10px;padding:14px;text-align:center;color:var(--muted);cursor:pointer;background:var(--field)}
+.drop.over{border-color:var(--accent);color:var(--ink)}
+.drop strong{color:var(--ink)}
+.thumbs{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.thumbs button{flex:0 0 auto;width:56px;height:70px;border-radius:6px;border:2px solid transparent;padding:0;background:var(--line) center/cover no-repeat;cursor:pointer}
+.thumbs button[aria-pressed=true]{border-color:var(--accent)}
+.stage{display:grid;gap:14px;min-width:0}
+.canvasbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;place-items:center}
+canvas#c{max-width:100%;max-height:78vh;width:auto;height:auto;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08)}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+button.btn{font:inherit;font-weight:700;font-size:13px;border-radius:8px;padding:10px 14px;cursor:pointer;border:1px solid var(--line);background:var(--field);color:var(--ink)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.note{font-size:12px;color:var(--muted)}
+.out{display:grid;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.out img{max-width:min(100%,360px);border-radius:4px}
+.caption{white-space:pre-wrap;font-size:13px;background:var(--field);border:1px solid var(--line);border-radius:8px;padding:12px;min-width:0;overflow-wrap:anywhere}
+.status{font-size:12px;font-weight:600;color:var(--accent);min-height:1.2em}
+.hint{font-size:12px;color:var(--warn)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Estudio Pima</h1>
+    <p>Sube la foto del proveedor, escribe modelo, precio y tallas, elige plantilla y formato. La imagen sale con tu marca, lista para Instagram, estados o el catálogo de WhatsApp.</p>
+  </header>
+
+  <div class="grid">
+    <form class="panel" id="f" autocomplete="off">
+      <fieldset>
+        <legend>Fotos</legend>
+        <label class="drop" id="drop" for="file"><span><strong>Elige o arrastra fotos</strong><br>Puedes subir varias del catálogo del proveedor</span>
+          <input id="file" type="file" accept="image/*" multiple hidden>
+        </label>
+        <div class="thumbs" id="thumbs" aria-label="Fotos subidas"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Plantilla</legend>
+        <div class="seg" role="radiogroup">
+          <label><input type="radio" name="tpl" id="tpl-producto" value="producto" checked><span>Producto</span></label>
+          <label><input type="radio" name="tpl" id="tpl-pedido" value="pedido"><span>Bajo pedido</span></label>
+          <label><input type="radio" name="tpl" id="tpl-oferta" value="oferta"><span>Precio / oferta</span></label>
+          <label><input type="radio" name="tpl" id="tpl-detalle" value="detalle"><span>Detalle</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Formato</legend>
+        <div class="seg" role="radiogroup">
+          <label><input type="radio" name="fmt" id="fmt-feed" value="feed" checked><span>Post 4:5</span></label>
+          <label><input type="radio" name="fmt" id="fmt-story" value="story"><span>Historia / Reel 9:16</span></label>
+          <label><input type="radio" name="fmt" id="fmt-square" value="square"><span>Catálogo 1:1</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Textos</legend>
+        <div class="two">
+          <label>Tienda<input type="text" id="tienda" value="Cottela"></label>
+          <label>Usuario<input type="text" id="usuario" value="@cottela.ec"></label>
+        </div>
+        <label>Modelo<input type="text" id="modelo" value="Polo cuello redondo"></label>
+        <div class="two">
+          <label>Tela<input type="text" id="tela" value="100 % algodón Pima"></label>
+          <label>Tallas<input type="text" id="tallas" value="S · M · L · XL"></label>
+        </div>
+        <div class="two">
+          <label>Precio (US$)<input type="text" id="precio" value="29,90" inputmode="decimal"></label>
+          <label>Precio antes (oferta)<input type="text" id="antes" value="34,90" inputmode="decimal"></label>
+        </div>
+        <label>Entrega / condición<input type="text" id="entrega" value="Entrega en 12–15 días"></label>
+        <label>Frase de detalle<textarea id="frase">Suave al tacto. No se deforma con las lavadas.</textarea></label>
+        <p class="hint" id="pimaHint" hidden>Usa "algodón Pima" solo si el proveedor te dio ficha técnica o certificado.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Encuadre de la foto</legend>
+        <label>Zoom<input type="range" id="zoom" min="1" max="2.5" step="0.01" value="1"></label>
+        <div class="two">
+          <label>Mover horizontal<input type="range" id="px" min="-1" max="1" step="0.01" value="0"></label>
+          <label>Mover vertical<input type="range" id="py" min="-1" max="1" step="0.01" value="0"></label>
+        </div>
+        <label>Brillo<input type="range" id="bright" min="0.8" max="1.3" step="0.01" value="1"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Logo (opcional)</legend>
+        <label class="drop" for="logo"><span><strong>Subir logo</strong> (PNG con fondo transparente)</span>
+          <input id="logo" type="file" accept="image/*" hidden>
+        </label>
+        <button type="button" class="btn" id="quitarLogo" hidden>Quitar logo</button>
+      </fieldset>
+    </form>
+
+    <div class="stage">
+      <div class="canvasbox"><canvas id="c" width="1080" height="1350" aria-label="Vista previa de la imagen"></canvas></div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="generar">Generar imagen final</button>
+        <button type="button" class="btn" id="descargar" title="Funciona al abrir el archivo en tu PC">Descargar JPG</button>
+        <button type="button" class="btn" id="copiarImg">Copiar imagen</button>
+        <span class="status" id="status" role="status"></span>
+      </div>
+      <div class="out" id="out" hidden>
+        <p class="note">Para guardarla: en el celular mantén presionada la imagen y toca "Guardar imagen"; en computadora, clic derecho → "Guardar imagen como".</p>
+        <img id="final" alt="Imagen final lista para publicar">
+      </div>
+      <div class="out">
+        <div class="actions" style="justify-content:space-between;align-items:center">
+          <strong>Pie de foto sugerido</strong>
+          <div class="actions">
+            <button type="button" class="btn" id="otroGancho">Otro gancho</button>
+            <button type="button" class="btn primary" id="copiarTxt">Copiar texto</button>
+          </div>
+        </div>
+        <div class="caption" id="caption"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const PAL = { crudo:'#F5F0E8', carbon:'#2B2B2B', salvia:'#7D8B6A', arena:'#D8C7A8', terracota:'#B5654A', gris:'#6E6A62' };
+  const SERIF = '"Playfair Display", Georgia, serif';
+  const SANS = '"Montserrat", Arial, sans-serif';
+  const SIZES = { feed:[1080,1350], story:[1080,1920], square:[1080,1080] };
+  const FIELDS = ['tienda','usuario','modelo','tela','tallas','precio','antes','entrega','frase'];
+  const $ = id => document.getElementById(id);
+  const c = $('c'), ctx = c.getContext('2d');
+
+  let photos = [];      // {img, url, zoom, px, py, bright}
+  let current = -1;
+  let logoImg = null;
+  let sample = makeSample();
+  let hookIdx = 0;
+
+  // restore text fields
+  try { const s = JSON.parse(localStorage.getItem('estudio-pima') || '{}'); FIELDS.forEach(k => { if (typeof s[k] === 'string') $(k).value = s[k]; }); } catch(e) {}
+  function save(){ try { const s={}; FIELDS.forEach(k=>s[k]=$(k).value); localStorage.setItem('estudio-pima', JSON.stringify(s)); } catch(e) {} }
+
+  function val(name){ return document.querySelector(`input[name=${name}]:checked`).value; }
+
+  function makeSample(){
+    const cv = document.createElement('canvas'); cv.width = 1000; cv.height = 1250;
+    const g = cv.getContext('2d');
+    const gr = g.createLinearGradient(0,0,0,1250); gr.addColorStop(0,'#cfd5c4'); gr.addColorStop(1,'#aeb89f');
+    g.fillStyle = gr; g.fillRect(0,0,1000,1250);
+    // simple t-shirt silhouette
+    g.save(); g.translate(500,610); g.shadowColor='rgba(0,0,0,.18)'; g.shadowBlur=40; g.shadowOffsetY=18;
+    g.fillStyle = '#2f3a4a';
+    g.beginPath();
+    g.moveTo(-120,-330); g.quadraticCurveTo(0,-250,120,-330);
+    g.lineTo(330,-230); g.lineTo(270,-60); g.lineTo(200,-90);
+    g.lineTo(210,360); g.lineTo(-210,360); g.lineTo(-200,-90);
+    g.lineTo(-270,-60); g.lineTo(-330,-230); g.closePath(); g.fill();
+    g.shadowColor='transparent';
+    g.strokeStyle='rgba(255,255,255,.12)'; g.lineWidth=4;
+    g.beginPath(); g.moveTo(-120,-330); g.quadraticCurveTo(0,-250,120,-330); g.stroke();
+    g.restore();
+    g.fillStyle='rgba(255,255,255,.85)'; g.font = `600 30px ${SANS}`; g.textAlign='center';
+    g.fillText('Foto de ejemplo · sube la del proveedor', 500, 1180);
+    return { img: cv, zoom:1, px:0, py:0, bright:1, isSample:true };
+  }
+
+  function active(){ return current >= 0 ? photos[current] : sample; }
+
+  function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+  function drawPhoto(p, x, y, w, h, r){
+    const img = p.img; const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const base = Math.max(w/iw, h/ih) * p.zoom;
+    const dw = iw*base, dh = ih*base;
+    const dx = x + (w-dw)/2 + p.px * (dw-w)/2;
+    const dy = y + (h-dh)/2 + p.py * (dh-h)/2;
+    ctx.save();
+    if (r) { roundRect(x,y,w,h,r); ctx.clip(); } else { ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip(); }
+    ctx.fillStyle = PAL.arena; ctx.fillRect(x,y,w,h);
+    try { ctx.filter = `brightness(${p.bright})`; } catch(e) {}
+    ctx.drawImage(img, dx, dy, dw, dh);
+    try { ctx.filter = 'none'; } catch(e) {}
+    ctx.restore();
+  }
+
+  function setFont(weight, size, fam, italic){ ctx.font = `${italic?'italic ':''}${weight} ${size}px ${fam}`; }
+  function spacing(px){ if ('letterSpacing' in ctx) ctx.letterSpacing = px + 'px'; }
+
+  function wrap(text, maxW, maxLines){
+    const words = String(text).split(/\s+/).filter(Boolean); const lines = []; let line = '';
+    for (const w of words){ const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line){ lines.push(line); line = w; } else line = t; }
+    if (line) lines.push(line);
+    if (lines.length > maxLines){ const keep = lines.slice(0,maxLines); let last = keep[maxLines-1]; while (ctx.measureText(last+'…').width > maxW && last.length) last = last.slice(0,-1); keep[maxLines-1] = last.trim()+'…'; return keep; }
+    return lines;
+  }
+
+  function storeTag(x, y, u){
+    const name = $('tienda').value.trim() || 'Tu tienda';
+    const h = 66*u, padX = 24*u;
+    let w;
+    if (logoImg){ const lh = 46*u; const lw = logoImg.width * (lh/logoImg.height); w = lw + padX*2;
+      ctx.fillStyle = PAL.crudo; roundRect(x,y,w,h,h/2); ctx.fill();
+      ctx.drawImage(logoImg, x+padX, y+(h-lh)/2, lw, lh); return; }
+    setFont(600, 32*u, SERIF); spacing(0);
+    w = ctx.measureText(name).width + padX*2;
+    ctx.fillStyle = PAL.crudo; roundRect(x,y,w,h,h/2); ctx.fill();
+    ctx.fillStyle = PAL.carbon; ctx.textBaseline='middle'; ctx.textAlign='left';
+    ctx.fillText(name, x+padX, y+h/2+1*u);
+  }
+
+  function priceBlock(rightX, baseY, u, color, big){
+    const p = ($('precio').value.trim() || '0');
+    setFont(600, big*u, SERIF); spacing(0); ctx.textAlign='right'; ctx.textBaseline='alphabetic'; ctx.fillStyle = color;
+    ctx.fillText(p, rightX, baseY);
+    const pw = ctx.measureText(p).width;
+    setFont(600, 26*u, SANS); spacing(2*u);
+    ctx.fillText('US$', rightX - pw - 10*u, baseY - big*u*0.45);
+    return pw;
+  }
+
+  function render(){
+    const [W,H] = SIZES[val('fmt')]; if (c.width!==W || c.height!==H){ c.width=W; c.height=H; }
+    const u = W/1080, M = 56*u, tpl = val('tpl'), fmt = val('fmt');
+    const p = active();
+    ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = PAL.crudo; ctx.fillRect(0,0,W,H);
+
+    if (tpl === 'producto' || tpl === 'pedido'){
+      const F = (fmt==='story'?440:fmt==='square'?300:340)*u;
+      drawPhoto(p, M, M, W-2*M, H-M-F, 18*u);
+      storeTag(M+24*u, M+24*u, u);
+      if (tpl==='pedido'){
+        const bw = 300*u, bh = 112*u, bx = W-M-24*u-bw, by = M+24*u;
+        ctx.fillStyle = PAL.salvia; roundRect(bx,by,bw,bh,18*u); ctx.fill();
+        ctx.fillStyle = PAL.crudo; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+        setFont(700, 26*u, SANS); spacing(3*u); ctx.fillText('BAJO PEDIDO', bx+bw/2, by+48*u);
+        setFont(500, 24*u, SANS); spacing(0); ctx.fillText('Sepáralo con el 50 %', bx+bw/2, by+86*u);
+      }
+      const top = H - F + 46*u;
+      ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+      setFont(700, 22*u, SANS); spacing(4*u); ctx.fillStyle = PAL.salvia;
+      ctx.fillText(($('tela').value||'').toUpperCase(), M, top+10*u);
+      setFont(600, 58*u, SERIF); spacing(0); ctx.fillStyle = PAL.carbon;
+      const lines = wrap($('modelo').value || 'Modelo', W-2*M-330*u, 2);
+      lines.forEach((l,i)=> ctx.fillText(l, M, top + 78*u + i*66*u));
+      const afterTitle = top + 78*u + (lines.length-1)*66*u;
+      setFont(500, 26*u, SANS); spacing(1*u); ctx.fillStyle = PAL.gris;
+      if ($('tallas').value.trim()) ctx.fillText('Tallas  ' + $('tallas').value, M, afterTitle + 54*u);
+      priceBlock(W-M, top + 82*u, u, PAL.carbon, 92);
+      // bottom rule and meta
+      const by = H - 44*u;
+      ctx.strokeStyle = PAL.arena; ctx.lineWidth = 2*u; ctx.beginPath(); ctx.moveTo(M, by-38*u); ctx.lineTo(W-M, by-38*u); ctx.stroke();
+      setFont(600, 22*u, SANS); spacing(1*u); ctx.fillStyle = PAL.gris; ctx.textAlign='left';
+      ctx.fillText($('usuario').value, M, by);
+      ctx.textAlign='right';
+      ctx.fillText(tpl==='pedido' ? $('entrega').value : 'Envíos a todo Ecuador', W-M, by);
+    }
+
+    if (tpl === 'oferta'){
+      const B = (fmt==='story'?400:fmt==='square'?280:320)*u;
+      drawPhoto(p, 0, 0, W, H-B, 0);
+      storeTag(M, M, u);
+      ctx.fillStyle = PAL.terracota; ctx.fillRect(0, H-B, W, B);
+      const top = H - B + 60*u;
+      ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.fillStyle = PAL.crudo;
+      setFont(700, 24*u, SANS); spacing(5*u); ctx.fillText('OFERTA', M, top+8*u);
+      setFont(600, 50*u, SERIF); spacing(0);
+      const lines = wrap($('modelo').value || 'Modelo', W-2*M-400*u, 2);
+      lines.forEach((l,i)=> ctx.fillText(l, M, top + 72*u + i*58*u));
+      setFont(500, 24*u, SANS); spacing(1*u);
+      ctx.fillText($('entrega').value, M, H - 50*u);
+      const pw = priceBlock(W-M, top + 132*u, u, PAL.crudo, 120);
+      const antes = $('antes').value.trim();
+      if (antes){ setFont(500, 28*u, SANS); spacing(0); ctx.textAlign='right';
+        const t = 'Antes US$ ' + antes; ctx.fillText(t, W-M, top+10*u);
+        const tw = ctx.measureText(t).width; const sx = W-M-tw + ctx.measureText('Antes ').width;
+        ctx.strokeStyle = PAL.crudo; ctx.lineWidth = 2.5*u; ctx.beginPath(); ctx.moveTo(sx, top+1*u); ctx.lineTo(W-M, top+1*u); ctx.stroke(); }
+      ctx.textAlign='right'; setFont(600, 22*u, SANS); spacing(1*u); ctx.fillText($('usuario').value, W-M, H-50*u);
+    }
+
+    if (tpl === 'detalle'){
+      drawPhoto(p, 0, 0, W, H, 0);
+      storeTag(M, M, u);
+      setFont(500, 58*u, SERIF, true); spacing(0);
+      const maxW = W - 2*M - 80*u;
+      const lines = wrap($('frase').value || '', maxW, 4);
+      const ph = 60*u + lines.length*70*u + 60*u;
+      const py = H - M - ph;
+      ctx.fillStyle = 'rgba(245,240,232,0.94)'; roundRect(M, py, W-2*M, ph, 18*u); ctx.fill();
+      ctx.fillStyle = PAL.carbon; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+      lines.forEach((l,i)=> ctx.fillText(l, M+40*u, py + 60*u + 44*u + i*70*u));
+      setFont(700, 20*u, SANS); spacing(4*u); ctx.fillStyle = PAL.salvia;
+      ctx.fillText(($('tela').value||'').toUpperCase(), M+40*u, py + ph - 34*u);
+    }
+    spacing(0);
+    $('pimaHint').hidden = !/pima/i.test($('tela').value + ' ' + $('modelo').value);
+    renderCaption();
+  }
+
+  const HOOKS = {
+    producto:['El básico que vas a querer en todos los colores.','Suave desde la primera puesta, igual en la lavada 50.','Menos prendas, mejores prendas.'],
+    pedido:['Sepáralo hoy, estrénalo en dos semanas.','Directo de Perú a tu ciudad.','Lo pides, lo traemos, lo estrenas.'],
+    oferta:['Precio especial solo por pocos días.','Tu excusa para renovar los básicos.','Menos precio, la misma calidad.'],
+    detalle:['Acércate. Así se ve una tela de buena fibra.','La diferencia se siente antes de verse.','No todo lo que dice algodón se siente así.']
+  };
+  function captionText(){
+    const tpl = val('tpl'), hooks = HOOKS[tpl]; const hook = hooks[hookIdx % hooks.length];
+    const m = $('modelo').value.trim(), t = $('tela').value.trim(), s = $('tallas').value.trim(), pr = $('precio').value.trim(), an = $('antes').value.trim(), en = $('entrega').value.trim();
+    const tag = '#' + ($('tienda').value || 'tienda').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');
+    let body;
+    if (tpl==='producto') body = `${m} de ${t.toLowerCase()}. Tallas ${s}.\nUS$ ${pr} · Envíos a todo Ecuador por Servientrega.`;
+    else if (tpl==='pedido') body = `${m} de ${t.toLowerCase()}, tallas ${s}.\nUS$ ${pr} · Bajo pedido: sepáralo con el 50 %. ${en}.`;
+    else if (tpl==='oferta') body = `${m} de ${t.toLowerCase()}.\nAhora US$ ${pr}${an?` (antes US$ ${an})`:''}. ${en}.`;
+    else body = `${$('frase').value.trim()}\n${m ? m + ' · ' : ''}${t}.`;
+    return `${hook}\n\n${body}\n\nEscríbenos al WhatsApp (enlace en el perfil) y te enviamos colores y tallas.\n\n${tag} #algodonperuano #ropaecuador #tiendaonlineecuador #enviosatodoecuador`;
+  }
+  function renderCaption(){ $('caption').textContent = captionText(); }
+
+  let t = null; function schedule(){ clearTimeout(t); t = setTimeout(() => { save(); render(); }, 60); }
+
+  // photo controls bound to active photo
+  ['zoom','px','py','bright'].forEach(k => $(k).addEventListener('input', () => { const p = active(); p[k] = parseFloat($(k).value); schedule(); }));
+  function syncSliders(){ const p = active(); ['zoom','px','py','bright'].forEach(k => $(k).value = p[k]); }
+
+  $('f').addEventListener('input', e => { if (!['zoom','px','py','bright','file','logo'].includes(e.target.id)) schedule(); });
+  $('f').addEventListener('change', e => { if (e.target.name==='tpl') hookIdx = 0; if (e.target.name) schedule(); });
+  $('f').addEventListener('submit', e => e.preventDefault());
+
+  function loadFiles(files){
+    [...files].filter(f => f.type.startsWith('image/')).forEach(f => {
+      const url = URL.createObjectURL(f); const img = new Image();
+      img.onload = () => { photos.push({img, url, zoom:1, px:0, py:0, bright:1}); current = photos.length-1; drawThumbs(); syncSliders(); render(); };
+      img.src = url;
+    });
+  }
+  function drawThumbs(){
+    const box = $('thumbs'); box.innerHTML = '';
+    photos.forEach((p,i) => { const b = document.createElement('button'); b.type='button'; b.style.backgroundImage = `url("${p.url}")`;
+      b.setAttribute('aria-label', `Foto ${i+1}`); b.setAttribute('aria-pressed', i===current);
+      b.addEventListener('click', () => { current = i; drawThumbs(); syncSliders(); render(); }); box.appendChild(b); });
+  }
+  $('file').addEventListener('change', e => { loadFiles(e.target.files); e.target.value=''; });
+  const drop = $('drop');
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => loadFiles(e.dataTransfer.files));
+  document.addEventListener('paste', e => { const items = [...(e.clipboardData?.files || [])]; if (items.length) loadFiles(items); });
+
+  $('logo').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const img = new Image();
+    img.onload = () => { logoImg = img; $('quitarLogo').hidden = false; render(); }; img.src = URL.createObjectURL(f); e.target.value=''; });
+  $('quitarLogo').addEventListener('click', () => { logoImg = null; $('quitarLogo').hidden = true; render(); });
+
+  function status(msg){ $('status').textContent = msg; clearTimeout(status.t); status.t = setTimeout(()=> $('status').textContent='', 4000); }
+  $('generar').addEventListener('click', () => { render(); $('final').src = c.toDataURL('image/jpeg', 0.92); $('out').hidden = false; status('Imagen lista abajo.'); });
+  $('descargar').addEventListener('click', () => {
+    render();
+    const slug = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    const a = document.createElement('a');
+    a.href = c.toDataURL('image/jpeg', 0.92);
+    a.download = `${slug($('modelo').value)||'imagen'}-${val('tpl')}-${val('fmt')}.jpg`;
+    document.body.appendChild(a); a.click(); a.remove();
+    $('final').src = a.href; $('out').hidden = false;
+    status('Si no se descargó, guárdala desde la imagen de abajo.');
+  });
+  $('copiarImg').addEventListener('click', () => {
+    render();
+    try {
+      if (!window.ClipboardItem || !navigator.clipboard?.write) throw new Error('x');
+      const item = new ClipboardItem({ 'image/png': new Promise(res => c.toBlob(res, 'image/png')) });
+      navigator.clipboard.write([item]).then(() => status('Imagen copiada.'), () => { $('generar').click(); status('No se pudo copiar; guárdala desde la imagen de abajo.'); });
+    } catch(e) { $('generar').click(); status('No se pudo copiar; guárdala desde la imagen de abajo.'); }
+  });
+  $('otroGancho').addEventListener('click', () => { hookIdx++; renderCaption(); });
+  $('copiarTxt').addEventListener('click', () => {
+    const txt = captionText();
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents($('caption')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); status('Texto seleccionado: cópialo con Ctrl+C o mantén presionado.'); };
+    try { navigator.clipboard.writeText(txt).then(() => status('Texto copiado.'), fallback); } catch(e) { fallback(); }
+  });
+
+  syncSliders();
+  render();
+  const fontsReady = Promise.all([
+    document.fonts.load(`600 60px ${SERIF}`), document.fonts.load(`italic 500 60px ${SERIF}`),
+    document.fonts.load(`500 24px ${SANS}`), document.fonts.load(`600 24px ${SANS}`), document.fonts.load(`700 24px ${SANS}`)
+  ]).catch(()=>{});
+  fontsReady.then(render);
+})();
+</script>
+
+</body>
+</html>
